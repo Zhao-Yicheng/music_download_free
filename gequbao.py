@@ -1,5 +1,5 @@
 from typing import Any
-
+from lxml import etree as etree
 
 import requests
 import re
@@ -11,37 +11,40 @@ headers = {
 }
 
 def request_list(name,headers = headers):
-    response = requests.get(f"https://www.gequbao.com/s/{name}")
-    pattern = re.compile(
-    r'<a href="(/music/\d+)" target="_blank"[^>]+title="([^-]+)\s*-\s*([^"]+)">',
-    re.IGNORECASE | re.DOTALL
-)
-    results = pattern.findall(response.text)
-    data_set=set()
-    for link, song_name, singer in results:
-        song_name = song_name.replace("&amp;", "&").strip()
-        singer = singer.replace("&amp;", "&").strip()
-        full_link = f"https://www.gequbao.com{link}"
-        data_set.add((song_name, singer, full_link))
-    data=[{"name": name, "singer": singer, "link": link} for name, singer, link in data_set]
+    response = requests.get(f"https://www.gequbao.com/s/{name}",headers=headers)
+    tree = etree.HTML(response.text)
+    song_rows = tree.xpath('//div[contains(@class, "row no-gutters py-2d5 border-top align-items-center")]')
+    song_list = []
+    for row in song_rows:
+        song_info = {
+            "name": row.xpath('.//span[@class="text-primary font-weight-bold h6 mb-0 text-truncate"]/text()')[0].strip(),
+            "singer": row.xpath('.//small[@class="text-jade font-weight-bold text-truncate"]/text()')[0].strip(),
+            "link": 'https://www.gequbao.com/'+row.xpath('.//a[@class="hover-zoom d-block text-decoration-none"]/@href')[0]
+        }
+        song_list.append(song_info)
+
+    data = song_list
     return data
 
 
-def request_url(link,headers = headers):
+def request_music_url(link,headers = headers):
     '''
     返回值为*.mp3
     '''
+    print('正在访问'+link)
     html = requests.get(link,headers=headers).text
-# 提取play_id
-    match = re.findall(r'\\u0022play_id\\u0022:\\u0022(.*?)\\u0022', html, re.DOTALL)
-    if match!=[]:
-        play_id=match[0]
-    else:
+    # 提取play_id
+    print('提取play_id',end=': ')
+    play_id=html[html.find("play_id")+20:html.find("play_id")+88]
+    if len(play_id)!=68:
         raise RuntimeError("未找到play_id")
+    print(play_id)
+
+    print('正在请求mp3')
     url = "https://www.gequbao.com/api/play-url"
     data = {"id": play_id}
-    headers = {"User-Agent": "Mozilla/5.0"}
     jsondata=requests.post(url, data=data, headers=headers, verify=False).json()
+    print('返回数据：'+str(jsondata))
+    print('mp3地址：'+jsondata["data"]["url"])
     return jsondata["data"]["url"]
-
 
