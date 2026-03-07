@@ -65,11 +65,6 @@ new-music/
 - 请遵守版权法律，仅用于个人学习使用
 - 音乐来源：gequbao.com
 
-## 许可证
-
-本项目仅供学习交流使用。
-
 
 ## 合作
- - 微信：__Zhaoyicheng__
-
+ - 微信：`__Zhaoyicheng__`
